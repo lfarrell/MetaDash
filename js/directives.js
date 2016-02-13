@@ -336,9 +336,11 @@ angular.module('metadataViewerApp').directive('treeMap', ['tipService', 'StatsSe
 
             cell.append("rect")
                 .attr("width", function (d) {
+                    if(d.dx - 1 < 1) return 1;
                     return d.dx - 1;
                 })
                 .attr("height", function (d) {
+                    if(d.dy - 1 < 1) return 1;
                     return d.dy - 1;
                 })
                 .style("fill", function (d) {
@@ -355,9 +357,11 @@ angular.module('metadataViewerApp').directive('treeMap', ['tipService', 'StatsSe
             cell.append("foreignObject")
                 .attr("class", 'fobj')
                 .attr("width", function (d) {
+                    if(d.dx - 2 < 1) return 1;
                     return d.dx - 2;
                 })
                 .attr("height", function (d) {
+                    if(d.dy - 2 < 1) return 1;
                     return d.dy - 2;
                 })
                 .style("font-size", ".8em")
