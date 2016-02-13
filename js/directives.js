@@ -102,7 +102,7 @@ angular.module('metadataViewerApp').directive('boxPlot', ['tipService', 'StatsSe
     function link(scope, element, attrs) {
         var width = (document.body.clientWidth / 3),
             height = 300,
-            margin = {top: 10, right: 80, left: 70, bottom: 75},
+            margin = {top: 10, right: 85, left: 70, bottom: 75},
             tip = tipService.tipDiv();
 
         scope.$watchGroup(['data', 'search'], function(values) {
@@ -149,7 +149,17 @@ angular.module('metadataViewerApp').directive('boxPlot', ['tipService', 'StatsSe
             var xAxis = d3.svg.axis()
                 .scale(xScale)
                 .orient("bottom")
-                .ticks(tick_number);
+                .ticks(tick_number)
+                .tickFormat(function(d) {
+                    var num = d.toString().length;
+                    if(num >= 7) {
+                        return d.toString().slice(0, num - 6) + 'M';
+                    } else if(num >= 4) {
+                        return d.toString().slice(0, num - 3) + 'K';
+                    } else {
+                        return d;
+                    }
+                });
 
             var yAxis = d3.svg.axis()
                 .scale(yScale)
@@ -167,9 +177,9 @@ angular.module('metadataViewerApp').directive('boxPlot', ['tipService', 'StatsSe
                 .call(xAxis);
 
             svg.append("text")
-                .attr("x", width / 1.75)
+                .attr("x", width / 3.1)
                 .attr("y", height + margin.bottom)
-                .text("Value Count");
+                .text("Value Count (K: Thousand records, M: Million records)");
 
             svg.append("g")
                 .attr("class", "y axis")
