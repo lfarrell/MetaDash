@@ -18,18 +18,6 @@ angular.module('metadataViewerApp').controller('dplaController', ['$scope', 'Loa
     LoadService.chartChange($scope);
 }]);
 
-angular.module('metadataViewerApp').controller('troveController', ['$scope', 'LoadService', function($scope, LoadService) {
-    $scope.header = 'Trove';
-    $scope.search = '';
-
-    $scope.apiSearch = function() {
-        LoadService.canvasFormat($scope);
-
-        var val = LoadService.queryFormat($scope.search);
-        LoadService.file_load("trove.php?q=" + val, $scope);
-    };
-}]);
-
 angular.module('metadataViewerApp').controller('digitalNzController', ['$scope', 'LoadService', function($scope, LoadService) {
     $scope.header = 'Digital New Zealand';
     $scope.search = '';

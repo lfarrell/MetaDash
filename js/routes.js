@@ -20,10 +20,6 @@ angular.module('metadataViewerApp').config(function($routeProvider) {
             templateUrl: 'partials/europeana.html',
             controller: 'europeanaController'
         })
-        .when('/trove', {
-            templateUrl: 'partials/trove.html',
-            controller: 'troveController'
-        })
         .otherwise({
             redirectTo: '/'
         });

@@ -58,8 +58,8 @@ angular.module('metadataViewerApp').service('tipService', function() {
             .style("opacity", .9);
 
         tip.html(text)
-            .style("top", (d3.event.pageY-28)+"px")
-            .style("left", (d3.event.pageX-28)+"px");
+            .style("top", (d3.event.pageY-38)+"px")
+            .style("left", (d3.event.pageX-38)+"px");
 
     };
 
@@ -85,9 +85,6 @@ angular.module('metadataViewerApp').service('StatsService', function() {
                 break;
             case "digitalnz":
                 return "http://www.digitalnz.org/records?text=";
-                break;
-            case "trove":
-                return "http://trove.nla.gov.au/result?q=";
                 break;
             default:
                 return "http://dp.la/search?q=";

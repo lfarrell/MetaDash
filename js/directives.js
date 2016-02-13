@@ -124,7 +124,7 @@ angular.module('metadataViewerApp').directive('boxPlot', ['tipService', 'StatsSe
     function link(scope, element, attrs) {
         var width = (document.body.clientWidth / 3),
             height = 300,
-            margin = {top: 10, right: 70, left: 70, bottom: 75},
+            margin = {top: 10, right: 80, left: 70, bottom: 75},
             tip = tipService.tipDiv();
 
         scope.$watchGroup(['data', 'search'], function(values) {
@@ -168,7 +168,8 @@ angular.module('metadataViewerApp').directive('boxPlot', ['tipService', 'StatsSe
 
             var xAxis = d3.svg.axis()
                 .scale(xScale)
-                .orient("bottom");
+                .orient("bottom")
+                .ticks(7);
 
             var yAxis = d3.svg.axis()
                 .scale(yScale)
@@ -303,10 +304,8 @@ angular.module('metadataViewerApp').directive('treeMap', ['tipService', 'StatsSe
                         }
 
                         facet = '&qf=' + d.type.toUpperCase() + '%3A' + term;
-                    } else if(scope.provider === 'dpla') {
-                        facet = '&type[]=' + term;
                     } else {
-                        facet = '&view=list&tab=' + term;
+                        facet = ' ' + term;
                     }
 
                     window.open(StatsService.provider(scope.provider) + search + facet);
