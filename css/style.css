@@ -112,8 +112,8 @@ rect:hover {
 
 circle {
     fill: red;
-    stroke: black;
-    stroke-width: 0.7;
+    stroke: lightsteelblue;
+    stroke-width: 0.4;
     opacity: 0.5;
 }
 

@@ -90,4 +90,8 @@ angular.module('metadataViewerApp').service('StatsService', function() {
                 return "http://dp.la/search?q=";
         }
     };
+
+    this.textFormat = function(number) {
+        return (number > 1) ? 's' : '';
+    };
 });

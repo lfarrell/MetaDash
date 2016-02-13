@@ -136,7 +136,7 @@ angular.module('metadataViewerApp').directive('boxPlot', ['tipService', 'StatsSe
                 return d.count;
             })).range([4, 15]).clamp(true);
 
-            var xScale = d3.scale.linear()
+            var xScale = d3.scale.sqrt()
                 .domain([0, d3.max(data, function(d) { return d.value; })])
                 .range([0, width]);
 
@@ -169,6 +169,11 @@ angular.module('metadataViewerApp').directive('boxPlot', ['tipService', 'StatsSe
                 .attr("y", height + margin.bottom)
                 .text("Value Count");
 
+            svg.selectAll("g.x text")
+                .attr('transform', "rotate(35)")
+                .attr('dx', 15)
+                .attr('dy', 5);
+
             svg.append("g")
                 .attr("class", "y axis")
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
@@ -181,7 +186,9 @@ angular.module('metadataViewerApp').directive('boxPlot', ['tipService', 'StatsSe
                 .attr("r", function(d) { return circle_size(d.count); })
                 .attr("transform", "translate("+ margin.left + "," + (margin.top + 25) + ")")
                 .on("mouseover", function(d) {
-                    var text = d.count + ' record returned <br/>' + StatsService.numFormat(d.value) + ' items for <br/>' + d.type;
+                    var plural = StatsService.textFormat(d.value);
+                    var text = d.count + ' record' + plural + ' returned <br/>' +
+                        StatsService.numFormat(d.value) + ' item'  + plural + ' for <br/>' + d.type;
                     tipService.tipShow(tip, text);
                 })
                 .on("mouseout", function(d) {
@@ -347,7 +354,8 @@ angular.module('metadataViewerApp').directive('treeMap', ['tipService', 'StatsSe
                     return color(d.type);
                 })
                 .on("mouseover", function(d) {
-                    var text = d.term + '<br/> returned ' + StatsService.numFormat(d.count) + ' items for <br/>' + d.type;
+                    var plural = StatsService.textFormat(d.count);
+                    var text = d.term + '<br/> returned ' + StatsService.numFormat(d.count) + ' item' + plural + ' for <br/>' + d.type;
                     tipService.tipShow(tip, text);
                 })
                 .on("mouseout", function(d) {
