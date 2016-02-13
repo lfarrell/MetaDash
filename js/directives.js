@@ -11,8 +11,7 @@ angular.module('metadataViewerApp').directive('bars', ['tipService', 'StatsServi
             var data = values[0];
             var search = values[1];
         //    var sorted = _.sortByOrder(data, ['type', 'count', 'term'], ['desc', 'desc', 'asc']);
-          //  console.log(sorted)
-          //  console.log(group_sorted)
+
             var type_counts = d3.nest()
                 .key(function(d) { return d.type; })
                 .rollup(function(values) { return d3.sum(values, function(d) {return +d.count; }) })
@@ -84,27 +83,6 @@ angular.module('metadataViewerApp').directive('bars', ['tipService', 'StatsServi
                 })
                 .on("mouseout", function(d) {
                     tipService.tipHide(tip);
-                })
-                .on("click", function (d) {
-                    var facet, term;
-
-                    if(d.term === 'rights') {
-                        term = encodeURIComponent(d.term);
-                    } else {
-                        term = d.term;
-                    }
-
-                    if(scope.provider === 'euro') {
-                        if(d.term === 'provider') {
-                            term = '"' + d.term + '"';
-                        }
-
-                        facet = '&qf=' + d.type.toUpperCase() + '%3A' + term;
-                    } else {
-                        facet = ' ' + term;
-                    }
-
-                    window.open(StatsService.provider(scope.provider) + search + facet);
                 });
         });
     }
@@ -242,8 +220,53 @@ angular.module('metadataViewerApp').directive('treeMap', ['tipService', 'StatsSe
 
             var data = values[0];
             var search = values[1];
-
             var tip = tipService.tipDiv();
+            var keys = [];
+
+            data.forEach(function(d) {
+                if(_.contains(keys, d.type) === false) {
+                    keys.push(d.type);
+                }
+            });
+
+            keys = keys.sort();
+
+            /**
+             * Add the legend
+             */
+            if(!document.querySelectorAll(".legend").length) {
+                var legend = d3.select("#trees")
+                    .append("svg")
+                    .attr("width", w)
+                    .attr("height", 55)
+                    .attr("class", "legend")
+                    .attr("transform", "translate(" + w/3.5 + ",0)");
+
+                var j = 0;
+
+                legend.selectAll('g').data(keys)
+                    .enter()
+                    .append('g').attr("width",190)
+                    .each(function(d) {
+                        var g = d3.select(this);
+
+                        g.append("rect")
+                            .attr("x", j)
+                            .attr("y", 15)
+                            .attr("width", 10)
+                            .attr("height", 10)
+                            .style("fill", color(d));
+
+                        g.append("text")
+                            .attr("x", j + 15)
+                            .attr("y", 25)
+                            .attr("height",30)
+                            .attr("width", d.length * 50)
+                            .text(d);
+
+                        j += (d.length * 5) + 50;
+                    });
+            }
 
             var treemap = d3.layout.treemap()
                 .round(false)
