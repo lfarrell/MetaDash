@@ -144,10 +144,12 @@ angular.module('metadataViewerApp').directive('boxPlot', ['tipService', 'StatsSe
                 .domain(keys)
                 .rangeRoundBands([height, 0], .05);
 
+            var tick_number = (scope.provider == 'digitalnz') ? 5 : 7;
+
             var xAxis = d3.svg.axis()
                 .scale(xScale)
                 .orient("bottom")
-                .ticks(7);
+                .ticks(tick_number);
 
             var yAxis = d3.svg.axis()
                 .scale(yScale)
@@ -168,11 +170,6 @@ angular.module('metadataViewerApp').directive('boxPlot', ['tipService', 'StatsSe
                 .attr("x", width / 1.75)
                 .attr("y", height + margin.bottom)
                 .text("Value Count");
-
-            svg.selectAll("g.x text")
-                .attr('transform', "rotate(35)")
-                .attr('dx', 15)
-                .attr('dy', 5);
 
             svg.append("g")
                 .attr("class", "y axis")
