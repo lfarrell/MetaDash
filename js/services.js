@@ -74,4 +74,23 @@ angular.module('metadataViewerApp').service('StatsService', function() {
     this.numFormat = function(number) {
         return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     };
+
+    this.provider =  function(p) {
+        switch (p) {
+            case "dpla":
+                return "http://dp.la/search?q=";
+                break;
+            case "euro":
+                return "http://www.europeana.eu/portal/search.html?query=";
+                break;
+            case "digitalnz":
+                return "http://www.digitalnz.org/records?text=";
+                break;
+            case "trove":
+                return "http://trove.nla.gov.au/result?q=";
+                break;
+            default:
+                return "http://dp.la/search?q=";
+        }
+    };
 });

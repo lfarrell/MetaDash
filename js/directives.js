@@ -1,406 +1,400 @@
-angular.module('metadataViewerApp').directive('forceTree', ['tipService', 'StatsService', function(tipService, StatsService) {
+angular.module('metadataViewerApp').directive('bars', ['tipService', 'StatsService', function(tipService, StatsService) {
     function link(scope, element, attrs) {
-        var width = document.body.clientWidth - 50,
-            color = d3.scale.category10(),
+        var width = (document.body.clientWidth / 3),
+            height = 300,
+            margin = {top: 20, right: 25, left: 90, bottom: 75},
             tip = tipService.tipDiv();
 
-        var provider = function(p) {
-            switch (p) {
-                case "dpla":
-                    return "http://dp.la/search?q=";
-                    break;
-                case "euro":
-                    return "http://www.europeana.eu/portal/search.html?query=";
-                    break;
-                case "digitalnz":
-                    return "http://www.digitalnz.org/records?text=";
-                    break;
-                case "trove":
-                    return "http://trove.nla.gov.au/result?q=";
-                    break;
-                case "harvard":
-                    return "http://stacklife.harvard.edu/search?search_type=keyword&q=";
-                    break;
-                default:
-                    return "http://dp.la/search?q=";
-            }
-        };
-
-        scope.$watchGroup(['data', 'chart', 'search'], function(values) {
+        scope.$watchGroup(['data', 'search'], function(values) {
             if(!values[0]) { return; }
 
             var data = values[0];
-            var chart_type = values[1];
-            var search = values[2];
+            var search = values[1];
+        //    var sorted = _.sortByOrder(data, ['type', 'count', 'term'], ['desc', 'desc', 'asc']);
+          //  console.log(sorted)
+          //  console.log(group_sorted)
+            var type_counts = d3.nest()
+                .key(function(d) { return d.type; })
+                .rollup(function(values) { return d3.sum(values, function(d) {return +d.count; }) })
+                .entries(data);
 
-            /**
-             * Format data
-             * @type {{name: string, children: Array}}
-             */
-            var datas = { name: "root", "children": [] };
+            var sorted_type_counts = _.sortBy(type_counts, 'key');
+
             var keys = [];
 
-            data.forEach(function(d) {
-                if(_.contains(keys, d.type) === false) {
-                    datas.children.push({ "name": d.type, "children": []});
-                    keys.push(d.type);
-                }
+            for(var i=0; i<sorted_type_counts.length; i++) {
+                keys.push(sorted_type_counts[i].key);
+            }
 
-                var i = _.indexOf(keys, d.type);
-                datas.children[i].children.push(d);
+            var xScale = d3.scale.ordinal()
+                .domain(keys)
+                .rangeRoundBands([0, width], .05);
+
+            var yScale = d3.scale.linear()
+                .domain([0, d3.max(sorted_type_counts, function(d) { return d.values; })])
+                .range([height, 0]);
+
+            var xAxis = d3.svg.axis()
+                .scale(xScale)
+                .orient("bottom");
+
+            var yAxis = d3.svg.axis()
+                .scale(yScale)
+                .orient("left");
+
+            var chart = d3.select(".bars").append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom);
+
+            chart.append("g")
+                .attr("class", "x axis")
+                .attr("transform", "translate("+ margin.left + "," + (height + margin.top) + ")")
+                .call(xAxis);
+
+            chart.append("text")
+                .attr("x", width / 1.75)
+                .attr("y", height + margin.bottom)
+                .style("text-anchor", "zs")
+                .text("Metadata Type");
+
+            chart.append("g")
+                .attr("class", "y axis")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+                .call(yAxis);
+
+            chart.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("x", -height/2)
+                .attr("y", 6)
+                .attr("dy", ".71em")
+                .style("text-anchor", "end")
+                .text("Item Count");
+
+            chart.selectAll("bar")
+                .data(sorted_type_counts).enter().append("rect")
+                .attr("x", function(d) { return xScale(d.key); })
+                .attr("width", xScale.rangeBand())
+                .attr("y", function(d) { return yScale(d.values); })
+                .attr("height", function(d) { return height - yScale(d.values); })
+                .attr("transform", "translate(" + margin.left + "," + (margin.top - 1) + ")")
+                .on("mouseover", function(d) { /*console.log(d.values)*/ })
+                .on("mouseover", function(d) {
+                    var text = d.key + ' record returned <br/>' + StatsService.numFormat(d.values) + ' items';
+                    tipService.tipShow(tip, text);
+                })
+                .on("mouseout", function(d) {
+                    tipService.tipHide(tip);
+                })
+                .on("click", function (d) {
+                    var facet, term;
+
+                    if(d.term === 'rights') {
+                        term = encodeURIComponent(d.term);
+                    } else {
+                        term = d.term;
+                    }
+
+                    if(scope.provider === 'euro') {
+                        if(d.term === 'provider') {
+                            term = '"' + d.term + '"';
+                        }
+
+                        facet = '&qf=' + d.type.toUpperCase() + '%3A' + term;
+                    } else {
+                        facet = ' ' + term;
+                    }
+
+                    window.open(StatsService.provider(scope.provider) + search + facet);
+                });
+        });
+    }
+
+    return {
+        restrict: 'C',
+        scope: {
+            'provider': '@',
+            'data': '=',
+            'search': '='
+        },
+        link: link
+    }
+}]);
+
+angular.module('metadataViewerApp').directive('boxPlot', ['tipService', 'StatsService', function(tipService, StatsService) {
+    function link(scope, element, attrs) {
+        var width = (document.body.clientWidth / 3),
+            height = 300,
+            margin = {top: 10, right: 70, left: 70, bottom: 75},
+            tip = tipService.tipDiv();
+
+        scope.$watchGroup(['data', 'search'], function(values) {
+            if(!values[0]) { return; }
+
+            var datas = values[0];
+            var search = values[1];
+
+            // Order & format data
+            var sorted = _.sortByOrder(datas, ['type', 'count', 'term'], ['asc', 'desc', 'asc']);
+            var nested_data = d3.nest()
+                .key(function(d) { return d.type; })
+                .key(function(d) { return d.count; })
+                .rollup(function(leaves) { return leaves.length; })
+                .entries(sorted);
+
+            var keys = _.uniq(_.pluck(datas, 'type').sort(), true);
+            var data = [];
+
+            nested_data.forEach(function(d) {
+                d.values.forEach(function(g) {
+                   data.push({type: d.key, value: +g.key, count: +g.values})
+                });
             });
 
-            keys = keys.sort();
+            data.sort(function(a,b) {
+                return b.count - a.count;
+            });
 
-            /**
-             * Force it up
-             */
-            var force = d3.layout.force();
+            var circle_size = d3.scale.sqrt().domain(d3.extent(data, function(d) {
+                return d.count;
+            })).range([4, 15]).clamp(true);
 
-            /**
-             * Add the legend
-             */
-            if(!document.querySelectorAll(".legend").length) {
-                var legend = d3.select(element[0])
-                    .append("svg")
-                    .attr("width", width)
-                    .attr("height", 55)
-                    .attr("class", "legend")
-                    .attr("transform", "translate(" + width/3.5 + ",0)");
+            var xScale = d3.scale.linear()
+                .domain([0, d3.max(data, function(d) { return d.value; })])
+                .range([0, width]);
 
-                var j = 0;
+            var yScale = d3.scale.ordinal()
+                .domain(keys)
+                .rangeRoundBands([height, 0], .05);
 
-                legend.selectAll('g').data(keys)
-                    .enter()
-                    .append('g').attr("width",190)
-                    .each(function(d) {
-                        var g = d3.select(this);
+            var xAxis = d3.svg.axis()
+                .scale(xScale)
+                .orient("bottom");
 
-                        g.append("rect")
-                            .attr("x", j)
-                            .attr("y", 15)
-                            .attr("width", 10)
-                            .attr("height", 10)
-                            .style("fill", color(d));
+            var yAxis = d3.svg.axis()
+                .scale(yScale)
+                .orient("left");
 
-                        g.append("text")
-                            .attr("x", j + 15)
-                            .attr("y", 25)
-                            .attr("height",30)
-                            .attr("width", d.length * 50)
-                            .text(d);
+            var svg = d3.select(".box-plot").append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-                        j += (d.length * 5) + 50;
-                    });
-            }
+            svg.append("g")
+                .attr("class", "x axis")
+                .attr("transform", "translate("+ margin.left + "," + (height + margin.top) + ")")
+                .call(xAxis);
 
-            /**
-             * Clean up any extraneous svg elements on transition
-             */
-            d3.selectAll(".graph").remove();
-            d3.selectAll("#attribution").remove();
+            svg.append("text")
+                .attr("x", width / 1.75)
+                .attr("y", height + margin.bottom)
+                .text("Value Count");
 
-            /**
-             * Start the graphing
-             */
-             if(chart_type === 'tree') {
-                treeMap();
-             } else if(chart_type === 'cloud') {
-                textCloud();
-             } else {
-                textCloud();
-             }
+            svg.append("g")
+                .attr("class", "y axis")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+                .call(yAxis);
 
-            /**
-             * Graph types
-             */
-            function textCloud() {
-                var height = document.body.clientHeight - 25,
-                    margin = { 'top': Math.round(data.length / 3.5), bottom: 25, left: 0, right: 25 };
-
-                var zoom = d3.behavior.zoom()
-                    .scaleExtent([1, 10])
-                    .on("zoom", zooming);
-
-                var drag = d3.behavior.drag()
-                    .origin(function(d) { return d; })
-                    .on("drag", dragged);
-
-                var data_nodes = { nodes: data };
-
-                var scale = d3.scale.linear()
-                    .domain(d3.extent(
-                        data_nodes.nodes, function(d) { return d.count; })
-                    )
-                    .range([5, 30]);
-
-                force.nodes(data_nodes.nodes)
-                    .size([width, height + 175])
-                    .charge(function(d) {
-                        var charging;
-
-                        if(scope.provider === 'harvard') {
-                            charging = -scale(d.count) * 10;
-                        } else if(scope.provider === 'digitalnz') {
-                            return -60 // Doesn't return many items, so this.
-                        } else {
-                           charging = -scale(d.term.length) + scale(d.count) * 10;
-                        }
-
-                   //     if(scope.provider === 'digitalnz') return -60; // Doesn't return many items, so this.
-
-                        if(charging > -100)  {
-                            return -25;
-                        } else if(charging > -300) {
-                            return -8;
-                        }
-                        return -charging * 2;
-                    })
-                    .start();
-
-                var svg = d3.select(element[0]).append("svg")
-                    .call(zoom)
-                    .attr("width", width)
-                    .attr("height", 900)
-                    .attr("class", "graph")
-                    .append("g")
-                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-                var rect = svg.append("rect")
-                    .attr("width", width)
-                    .attr("height", height)
-                    .style("fill", "none")
-                    .style("pointer-events", "all");
-
-                var nodes = svg.append("g")
-                    .selectAll("text")
-                    .data(data_nodes.nodes)
-                    .enter();
-
-                var texts = nodes.append("text")
-                    .style("fill", function(d) {
-                        return color(d.type);
-                    })
-                    .style("font-size", function(d) { return scale(d.count) + "px"; })
-                    .style("text-anchor", "middle")
-                    .text(function(d) { return d.term; })
-                    .on("mouseover", function(d) {
-                        var text = d.term + '<br/> had ' + StatsService.numFormat(d.count) + ' uses for <br/>' + d.type;
-                        tipService.tipShow(tip, text);
-                    })
-                    .on("mouseout", function(d) {
-                        tipService.tipHide(tip);
-                    })
-                    .on("click", function(d) {
-                        var facet, term;
-
-                        if(d.term === 'rights') {
-                            term = encodeURIComponent(d.term);
-                        } else {
-                            term = d.term;
-                        }
-
-                        if(scope.provider === 'euro') {
-                            if(d.term === 'provider') {
-                                term = '"' + d.term + '"';
-                            }
-
-                            facet = '&qf=' + d.type.toUpperCase() + '%3A' + term;
-                        } else {
-                            facet = ' ' + term;
-                        }
-
-                        window.open(provider(scope.provider) + search + facet);
-                    })
-                    .call(drag);
-
-                force.on("tick", function() {
-                    texts.attr("dx", function(d) { return d.x; })
-                        .attr("dy", function(d) { return d.y; })
+            svg.selectAll("circle")
+                .data(data).enter().append("circle")
+                .attr("cx", function(d) { return xScale(d.value); })
+                .attr("cy", function(d) { return yScale(d.type); })
+                .attr("r", function(d) { return circle_size(d.count); })
+                .attr("transform", "translate("+ margin.left + "," + (margin.top + 25) + ")")
+                .on("mouseover", function(d) {
+                    var text = d.count + ' record returned <br/>' + StatsService.numFormat(d.value) + ' items for <br/>' + d.type;
+                    tipService.tipShow(tip, text);
+                })
+                .on("mouseout", function(d) {
+                    tipService.tipHide(tip);
                 });
+        });
+    }
 
-                function zooming() {
-                    svg.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-                }
+    return {
+        restrict: 'C',
+        scope: {
+            'provider': '@',
+            'data': '=',
+            'search': '='
+        },
+        link: link
+    }
+}]);
 
-                function dragged(d) {
-                    d3.event.sourceEvent.stopPropagation();
-                    d3.select(this).attr("cx", d.x = d3.event.x).attr("cy", d.y = d3.event.y);
-                }
-            }
+/**
+ * Directive for creating tree maps
+ * Port of http://mbostock.github.io/d3/talk/20111018/treemap.html to Angular
+ */
+angular.module('metadataViewerApp').directive('treeMap', ['tipService', 'StatsService', function(tipService, StatsService) {
+    function link(scope, element, attrs) {
+        var w = document.body.clientWidth - 60,
+            h = 720,
+            x = d3.scale.linear().range([0, w]),
+            y = d3.scale.linear().range([0, h]),
+            color = d3.scale.category10(),
+            root,
+            node;
 
-            function treeMap() {
-                var height = 900 - 180,
-                    x = d3.scale.linear().range([0, width]),
-                    y = d3.scale.linear().range([0, height]),
-                    root,
-                    node;
+        scope.$watchGroup(['data', 'search'], function(values) {
+            if(!values[0]) { return; }
 
-                var svg = d3.select(element[0])
-                    .append("svg")
-                    .attr("width", width)
-                    .attr("height", height)
-                    .attr("class", "graph")
-                    .append("g")
-                    .attr("transform", "translate(.5,.5)");
+            var data = values[0];
+            var search = values[1];
 
-                node = root = datas;
+            var tip = tipService.tipDiv();
 
-                var treemap = d3.layout.treemap()
-                    .round(false)
-                    .size([width, height])
-                    .sticky(true)
-                    .value(function (d) {
-                        return d.count;
-                    });
-
-                var nodes = treemap.nodes(root)
-                    .filter(function (d) {
-                        return !d.children;
-                    });
-
-                var cell = svg.selectAll("g")
-                    .data(nodes);
-
-                cell.enter().append("g")
-                    .attr("class", "cell")
-                    .attr("transform", function (d) {
-                        return "translate(" + d.x + "," + d.y + ")";
-                    })
-                    .on("dblclick", function (d) {
-                        return zoom(node == d.parent ? root : d.parent);
-                    })
-                    .on("click", function (d) {
-                        window.open(provider(scope.provider) + '"' + search + '"' + '+' + d.term);
-                    });
-
-                cell.append("rect")
-                    .attr("class", "mapped")
-                    .attr("width", function (d) {
-                        var w = d.dx - 1;
-                        if(w > 0) {
-                            return w;
-                        }
-
-                        return 0
-                    })
-                    .attr("height", function (d) {
-                        var h = d.dy - 2;
-                        if(h > 0) {
-                            return h;
-                        }
-
-                        return 0
-                    })
-                    .style("fill", function (d) {
-                        return color(d.type);
-                    })
-                    .on("mouseover", function(d) {
-                        var text = d.term + '<br/> had ' + StatsService.numFormat(d.count) + ' uses for <br/>' + d.type;
-                        tipService.tipShow(tip, text);
-                    })
-                    .on("mouseout", function(d) {
-                        tipService.tipHide(tip);
-                    });
-
-                cell.append("foreignObject")
-                    .attr("class", 'fobj')
-                    .attr("width", function (d) {
-                        var w = d.dx - 2;
-                        if(w > 0) {
-                            return w;
-                        }
-
-                        return 0;
-                    })
-                    .attr("height", function (d) {
-                        var h = d.dy - 2;
-                        if(h > 0) {
-                            return h;
-                        }
-
-                        return 0
-                    })
-                    .style("font-size", ".8em")
-                    .style("pointer-events", "none")
-                    .text(function (d) {
-                        return d.term;
-                    });
-
-                d3.select(window).on("click", function () {
-                    zoom(root);
-                });
-
-                d3.select("select").on("change", function () {
-                    treemap.value(this.value == "size" ? size : count).nodes(root);
-                    zoom(node);
-                });
-
-                d3.select(element[0]).append("p")
-                    .attr("id", "attribution")
-                    .text("Implementation of zoomable treemap by Mike Bostock, http://mbostock.github.io/d3/talk/20111018/treemap.html")
-                    .style("color", "gray")
-                    .style("font-size", "12px");
-
-
-                function size(d) {
+            var treemap = d3.layout.treemap()
+                .round(false)
+                .size([w, h])
+                .sticky(true)
+                .value(function (d) {
                     return d.count;
-                }
+                });
 
-                function count(d) {
-                    return 1;
-                }
+            var svg = d3.select("#trees")
+                .append("svg")
+                .attr("width", w)
+                .attr("height", h)
+                .append("g")
+                .attr("transform", "translate(.5,.5)");
 
-                function zoom(d) {
-                    var kx = width / d.dx, ky = height / d.dy;
-                    x.domain([d.x, d.x + d.dx]);
-                    y.domain([d.y, d.y + d.dy]);
 
-                    var t = svg.selectAll("g.cell").transition()
-                        .duration(d3.event.altKey ? 7500 : 750)
-                        .attr("transform", function (d) {
-                            return "translate(" + x(d.x) + "," + y(d.y) + ")";
-                        });
+            var formatted_data = {"name": "items","children": []};
+            var nested_data = d3.nest()
+                .key(function(d) { return d.type; })
+                .map(data);
 
-                    t.select("rect")
-                        .attr("width", function (d) {
-                            var w = kx * d.dx - 1;
-                            if(w > 0) {
-                                return w;
-                            }
+            for(var key in nested_data) {
+                var format = { name: key, children: nested_data[key] };
+                formatted_data.children.push(format);
+            }
 
-                            return 0;
-                        })
-                        .attr("height", function (d) {
-                            var w = kx * d.dy - 1;
-                            if(w > 0) {
-                                return w;
-                            }
+            node = root = formatted_data;
 
-                            return 0;
-                        });
+            var nodes = treemap.nodes(root)
+                .filter(function (d) {
+                    return !d.children;
+                });
 
-                    t.select(".fobj") // select foreignObject's class. Webkit browsers will give an empty selection otherwise
-                        .attr("width", function (d) {
-                            var w = kx * d.dx - 2;
-                            if(w > 0) {
-                                return w;
-                            }
+            var cell = svg.selectAll("g")
+                .data(nodes)
+                .enter().append("g")
+                .attr("class", "cell")
+                .attr("transform", function (d) {
+                    return "translate(" + d.x + "," + d.y + ")";
+                })
+                .on("click", function (d) {
+                    var facet, term;
 
-                            return 0;
-                        })
-                        .attr("height", function (d) {
-                            var h = kx * d.dy - 2;
-                            if(h > 0) {
-                                return h;
-                            }
+                    if(node == root) {
+                        return zoom(d.parent);
+                    }
 
-                            return 0;
-                        });
+                    if(d.term === 'rights') {
+                        term = encodeURIComponent(d.term);
+                    } else {
+                        term = d.term;
+                    }
 
-                    node = d;
-                    d3.event.stopPropagation();
-                }
+                    if(scope.provider === 'euro') {
+                        if(d.term === 'provider') {
+                            term = '"' + d.term + '"';
+                        }
+
+                        facet = '&qf=' + d.type.toUpperCase() + '%3A' + term;
+                    } else if(scope.provider === 'dpla') {
+                        facet = '&type[]=' + term;
+                    } else {
+                        facet = '&view=list&tab=' + term;
+                    }
+
+                    window.open(StatsService.provider(scope.provider) + search + facet);
+                });
+
+            cell.append("rect")
+                .attr("width", function (d) {
+                    return d.dx - 1;
+                })
+                .attr("height", function (d) {
+                    return d.dy - 1;
+                })
+                .style("fill", function (d) {
+                    return color(d.type);
+                })
+                .on("mouseover", function(d) {
+                    var text = d.term + '<br/> returned ' + StatsService.numFormat(d.count) + ' items for <br/>' + d.type;
+                    tipService.tipShow(tip, text);
+                })
+                .on("mouseout", function(d) {
+                    tipService.tipHide(tip);
+                });
+
+            cell.append("foreignObject")
+                .attr("class", 'fobj')
+                .attr("width", function (d) {
+                    return d.dx - 2;
+                })
+                .attr("height", function (d) {
+                    return d.dy - 2;
+                })
+                .style("font-size", ".8em")
+                .style("pointer-events", "none")
+                .text(function (d) {
+                    return d.term;
+                });
+
+            d3.select(window).on("click", function () {
+                zoom(root);
+            });
+
+            d3.select("select").on("change", function () {
+                treemap.value(this.value == "size" ? size : count).nodes(root);
+                zoom(node);
+            });
+
+            d3.select(element[0]).append("p")
+                .text("Implementation of zoomable treemap by Mike Bostock, http://mbostock.github.io/d3/talk/20111018/treemap.html")
+                .style("color", "gray")
+                .style("font-size", "12px");
+
+            function size(d) {
+                return d.count;
+            }
+
+            function count(d) {
+                return 1;
+            }
+
+            function zoom(d) {
+                var kx = w / d.dx, ky = h / d.dy;
+                x.domain([d.x, d.x + d.dx]);
+                y.domain([d.y, d.y + d.dy]);
+
+                var t = svg.selectAll("g.cell").transition()
+                    .duration(d3.event.altKey ? 7500 : 750)
+                    .attr("transform", function (d) {
+                        return "translate(" + x(d.x) + "," + y(d.y) + ")";
+                    });
+
+                t.select("rect")
+                    .attr("width", function (d) {
+                        return kx * d.dx - 1;
+                    })
+                    .attr("height", function (d) {
+                        return ky * d.dy - 1;
+                    });
+
+                t.select(".fobj") // select foreignObject's class. Webkit browsers will give an empty selection otherwise
+                    .attr("width", function (d) {
+                        return kx * d.dx - 2;
+                    })
+                    .attr("height", function (d) {
+                        return kx * d.dy - 2;
+                    });
+
+                node = d;
+                d3.event.stopPropagation();
             }
         });
     }
@@ -410,373 +404,8 @@ angular.module('metadataViewerApp').directive('forceTree', ['tipService', 'Stats
         scope: {
             'provider': '@',
             'data': '=',
-            'chart': '=',
             'search': '='
         },
         link: link
     }
-
-}]);
-
-angular.module('metadataViewerApp').directive('forceChart', ['tipService', 'StatsService', function(tipService, StatsService) {
-    function link(scope, element, attrs) {
-        var width = document.body.clientWidth - 50,
-            height = document.body.clientHeight - 50,
-            color = d3.scale.category10(),
-            tip = tipService.tipDiv(),
-            margin = { 'top':250, bottom: 25, left: 0, right: 25 };
-
-        var provider = function(p) {
-            switch (p) {
-                case "dpla":
-                    return "http://dp.la/search?q=";
-                    break;
-                case "euro":
-                    return "http://www.europeana.eu/portal/search.html?query=";
-                    break;
-                case "digitalnz":
-                    return "http://www.digitalnz.org/records?text=";
-                    break;
-                case "trove":
-                    return "http://trove.nla.gov.au/result?q=";
-                    break;
-                default:
-                    return "http://dp.la/search?q=";
-            }
-        };
-
-        scope.$watch('data', function(data) {
-            if(!data) { return; }
-
-            var keys = [];
-
-            data.forEach(function(d) {
-                if(_.contains(keys, d.type) === false) {
-                    keys.push(d.type);
-                }
-            });
-
-            keys = keys.sort();
-
-            var legend = d3.select(element[0])
-                .append("svg")
-                .attr("width", width)
-                .attr("height", 55)
-                .attr("transform", "translate(" + width/3.5 + ",0)");
-
-            var j = 0;
-
-            legend.selectAll('g').data(keys)
-                .enter()
-                .append('g').attr("width",190)
-                .each(function(d) {
-                    var g = d3.select(this);
-
-                    g.append("rect")
-                        .attr("x", j)
-                        .attr("y", 15)
-                        .attr("width", 10)
-                        .attr("height", 10)
-                        .style("fill", color(d));
-
-                    g.append("text")
-                        .attr("x", j + 15)
-                        .attr("y", 25)
-                        .attr("height",30)
-                        .attr("width", d.length * 50)
-                        .text(d);
-
-                    j += (d.length * 5) + 50;
-                });
-
-            var zoom = d3.behavior.zoom()
-                .scaleExtent([1, 10])
-                .on("zoom", zooming);
-
-            var drag = d3.behavior.drag()
-                .origin(function(d) { return d; })
-                .on("drag", dragged);
-
-            var data_nodes = { nodes: data };
-
-            var scale = d3.scale.linear()
-                .domain(d3.extent(
-                    data_nodes.nodes, function(d) { return d.count; })
-                )
-                .range([5, 30]);
-
-            var force = d3.layout.force()
-                .nodes(data_nodes.nodes)
-                .size([width, height + 175])
-                .charge(function(d) {
-                    var charging = -scale(d.term.length) + scale(d.count) * 10;
-
-                    if(charging > -100)  {
-                        return -25;
-                    } else if(charging > -300) {
-                        return -8;
-                    }
-                        return -charging * 2;
-
-                })
-                .start();
-
-            var svg = d3.select(element[0]).append("svg")
-                 .call(zoom)
-                .attr("width", width)
-                .attr("height", 900)
-                .attr("class", "force")
-                .append("g")
-                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-            var rect = svg.append("rect")
-                .attr("width", width)
-                .attr("height", height)
-                .style("fill", "none")
-                .style("pointer-events", "all");
-
-            var nodes = svg.append("g")
-                .selectAll("text")
-                .data(data_nodes.nodes)
-                .enter();
-
-            var texts = nodes.append("text")
-                .style("fill", function(d) {
-                    return color(d.type);
-                })
-                .style("font-size", function(d) { return scale(d.count) + "px"; })
-                .style("text-anchor", "middle")
-                .text(function(d) { return d.term; })
-                .on("mouseover", function(d) {
-                    var text = d.term + '<br/> had ' + StatsService.numFormat(d.count) + ' uses for <br/>' + d.type;
-                    tipService.tipShow(tip, text);
-                })
-                .on("mouseout", function(d) {
-                    tipService.tipHide(tip);
-                })
-                .on("click", function(d) {
-                    window.open(provider(scope.provider) + '"' + d.term + '"');
-                })
-                .call(drag);
-
-            force.on("tick", function() {
-                texts.attr("dx", function(d) { return d.x; })
-                    .attr("dy", function(d) { return d.y; })
-            });
-
-            function zooming() {
-                svg.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-            }
-
-            function dragged(d) {
-                d3.event.sourceEvent.stopPropagation();
-                d3.select(this).attr("cx", d.x = d3.event.x).attr("cy", d.y = d3.event.y);
-            }
-        });
-    }
-
-    return {
-        restrict: 'C',
-        scope: {
-            'provider': '@',
-            'data': '='
-        },
-        link: link
-    }
-}]);
-
-/* Directive for creating tree maps
-* Port of http://mbostock.github.io/d3/talk/20111018/treemap.html to Angular
-*/
-angular.module('metadataViewerApp').directive('treeMap', ['tipService', 'StatsService', function(tipService, StatsService) {
-    function link(scope, element, attrs) {
-            var w = document.body.clientWidth - 80,
-                h = 900 - 180,
-                x = d3.scale.linear().range([0, w]),
-                y = d3.scale.linear().range([0, h]),
-                color = d3.scale.category10(),
-                root,
-                node;
-
-            scope.$watch('data', function(data) {
-                if (!data) { return; }
-
-                if(data.length) {
-                        var tip = tipService.tipDiv();
-                        var datas = {name: "root", "children": [] };
-                        var keys = [];
-
-                        data.forEach(function(d) {
-                            if(_.contains(keys, d.type) === false) {
-                                datas.children.push({ "name": d.type, "children": []});
-                                keys.push(d.type);
-                            }
-
-                            var i = _.indexOf(keys, d.type);
-                            datas.children[i].children.push(d);
-                        });
-
-                        keys = keys.sort();
-
-                        var legend = d3.select(element[0])
-                            .append("svg")
-                            .attr("width", w)
-                            .attr("height", 55);
-                        var j = 0;
-
-                        legend.selectAll('g').data(keys)
-                            .enter()
-                            .append('g').attr("width",190)
-                            .each(function(d, i) {
-                                var g = d3.select(this);
-
-                                g.append("rect")
-                                    .attr("x", j)
-                                    .attr("y", 15)
-                                    .attr("width", 10)
-                                    .attr("height", 10)
-                                    .style("fill", color(d));
-
-                                g.append("text")
-                                    .attr("x", j + 15)
-                                    .attr("y", 25)
-                                    .attr("height",30)
-                                    .attr("width", d.length * 50)
-                                    .style("fill", "white")
-                                    .text(d);
-
-                                j += (d.length * 5) + 50;
-                            });
-
-                        var svg = d3.select(element[0])
-                            .append("svg")
-                            .attr("width", w)
-                            .attr("height", h)
-                            .append("g")
-                            .attr("transform", "translate(.5,.5)");
-
-                        node = root = datas;
-
-                        var treemap = d3.layout.treemap()
-                            .round(false)
-                            .size([w, h])
-                            .sticky(true)
-                            .value(function (d) {
-                                return d.count;
-                            });
-
-                        var nodes = treemap.nodes(root)
-                            .filter(function (d) {
-                                return !d.children;
-                            });
-
-                        var cell = svg.selectAll("g")
-                            .data(nodes);
-
-                        cell.enter().append("g")
-                            .attr("class", "cell")
-                            .attr("transform", function (d) {
-                                return "translate(" + d.x + "," + d.y + ")";
-                            })
-                            .on("dblclick", function (d) {
-                                return zoom(node == d.parent ? root : d.parent);
-                            });
-
-                        cell.append("rect")
-                            .attr("width", function (d) {
-                                return d.dx - 1 > 0 ? d.dx - 1 : 0;
-                            })
-                            .attr("height", function (d) {
-                                return d.dy - 1 > 0 ? d.dy - 1  : 0;
-                            })
-                            .style("fill", function (d) {
-                                return color(d.type);
-                            })
-                            .on("mouseover", function(d) {
-                                var text = d.term + '<br/> had ' + StatsService.numFormat(d.count) + ' uses for <br/>' + d.type;
-                                tipService.tipShow(tip, text);
-                            })
-                            .on("mouseout", function(d) {
-                                tipService.tipHide(tip);
-                            });
-
-                        cell.append("foreignObject")
-                            .attr("class", 'fobj')
-                            .attr("width", function (d) {
-
-                                return d.dx - 2 > 0 ? d.dx - 2  : 0;
-                            })
-                            .attr("height", function (d) {
-                                return d.dy - 2 > 0 ? d.dy - 2  : 0;
-                            })
-                            .style("font-size", ".8em")
-                            .style("pointer-events", "none")
-                            .text(function (d) {
-                                return d.term;
-                            });
-
-                        d3.select(window).on("click", function () {
-                            zoom(root);
-                        });
-
-                        d3.select("select").on("change", function () {
-                            treemap.value(this.value == "size" ? size : count).nodes(root);
-                            zoom(node);
-                        });
-
-                        d3.select(element[0]).append("p")
-                            .attr("id", "attribution")
-                            .text("Implementation of zoomable treemap by Mike Bostock, http://mbostock.github.io/d3/talk/20111018/treemap.html")
-                            .style("color", "gray")
-                            .style("font-size", "12px");
-
-
-                        function size(d) {
-                            return d.count;
-                        }
-
-                        function count(d) {
-                            return 1;
-                        }
-
-                        function zoom(d) {
-                            var kx = w / d.dx, ky = h / d.dy;
-                            x.domain([d.x, d.x + d.dx]);
-                            y.domain([d.y, d.y + d.dy]);
-
-                            var t = svg.selectAll("g.cell").transition()
-                                .duration(d3.event.altKey ? 7500 : 750)
-                                .attr("transform", function (d) {
-                                    return "translate(" + x(d.x) + "," + y(d.y) + ")";
-                                });
-
-                            t.select("rect")
-                                .attr("width", function (d) {
-                                    return kx * d.dx - 1;
-                                })
-                                .attr("height", function (d) {
-                                    return ky * d.dy - 1;
-                                });
-
-                            t.select(".fobj") // select foreignObject's class. Webkit browsers will give an empty selection otherwise
-                                .attr("width", function (d) {
-                                    return kx * d.dx - 2;
-                                })
-                                .attr("height", function (d) {
-                                    return kx * d.dy - 2;
-                                });
-
-                            node = d;
-                            d3.event.stopPropagation();
-                        }
-                } else {
-                    d3.append("p").text("Nothing Found")
-                }
-            });
-        }
-
-        return {
-            restrict: 'C',
-            link: link
-        }
 }]);

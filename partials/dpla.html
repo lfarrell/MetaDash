@@ -25,17 +25,28 @@
         <h3>Search: {{ search_term }}</h3>
     </div>
 </div>
-<div class="row">
-    <div class="col-md-12 force-tree" search="search_term" chart="chart" data="data" provider="dpla" ng-show="loaded"></div>
+
+<div class="row" ng-show="loaded">
+    <div class="col-md-6 bars" search="search_term" data="data" provider="dpla">
+        <h3 class="text-center">Counts by Metadata Type</h3>
+    </div>
+    <div class="col-md-6 box-plot" search="search_term" data="data" provider="dpla">
+        <h3 class="text-center">Metadata Spread by Type</h3>
+    </div>
+</div>
+
+<div class="row" ng-show="loaded">
+    <div class="col-md-12 tree-map" id="trees" search="search_term" data="data" provider="dpla">
+        <h3 class="text-center">Items by Metadata Type</h3>
+    </div>
 </div>
 
 <div id="about" class="col-md-12 panel">
     <a class="btn btn-primary about" id="about-close">Close</a>
     <p>Search the DPLA for a term or terms and view the metadata associated with your search.
-        The metadata is shown as force directed text cloud.</p>
-    <p>Double click either chart type
-        to zoom in further. Use your scroll wheel to pan back out. Drag the visualization to move around in it. Hover over a text bubble to view info about it. Click a text
-        bubble to search the DPLA for your original term plus the clicked metadata field.</p>
+        The metadata is shown as a bar chart, scatter plot and treemap.</p>
+    <p>Click the treemap to expand a section. Once expanded you can click a term's box to search for it. Click
+        outside the treemap to close the section.</p>
     <p>The available metadata fields are: country, format, language, provider, state and subject. Metadata fields are based on
         which fields are facetable from the provider to reduce querying time.</p>
 </div>

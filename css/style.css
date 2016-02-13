@@ -72,3 +72,47 @@ img {
 #about-btn {
     margin-left: 15px;
 }
+
+.axis path,
+.axis line {
+    fill: none;
+    padding: 5px;
+    shape-rendering: crispEdges;
+    stroke: white;
+}
+
+rect {
+    fill: steelblue
+}
+
+.box line,
+.box rect,
+.box circle {
+    fill: steelblue;
+    stroke: #fff;
+    stroke-width: 1.5px;
+}
+
+.box .center {
+    stroke-dasharray: 3,3;
+}
+
+.box .outlier {
+    fill: none;
+    stroke: #ccc;
+}
+
+h3.text-center {
+    margin-left: 0;
+}
+
+rect:hover {
+   fill: lightgoldenrodyellow;
+}
+
+circle {
+    fill: red;
+    stroke: black;
+    stroke-width: 1);
+    opacity: 0.5;
+}

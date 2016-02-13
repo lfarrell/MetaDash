@@ -17,26 +17,26 @@
     <div class="col-md-1">
         <a class="btn btn-info  ng-isolate-scope" id="about-btn" pageslide="left" ps-custom-top="40" href="#about">About</a>
     </div>
-    <!-- <div class="btn-group col-md-2">
-         <button class="btn btn-default" ng-click="graphType('tree')">Treemap</button>
-         <button class="btn btn-default" ng-click="graphType('cloud')">Text Cloud</button>
-     </div> -->
     <div class="col-md-11">
         <h3>Search: {{ search_term }}</h3>
     </div>
 </div>
 <div class="row" ng-show="loaded">
-    <div class="col-md-12 force-tree" search="search_term" chart="chart" data="data" provider="digitalnz"></div>
+    <div class="col-md-6 bars" search="search_term" data="data" provider="digitalnz"></div>
+    <div class="col-md-6 box-plot" search="search_term" data="data" provider="digitalnz"></div>
+</div>
+
+<div class="row" ng-show="loaded">
+    <div class="col-md-12 treemap" search="search_term" data="data" provider="digitalnz"></div>
     <div class="col-md-12"><img src="imgs/digitalnz_logo_sm.jpg" alt="Digital New Zealand Logo"></div>
 </div>
 
 <div id="about" class="col-md-12 panel">
     <a class="btn btn-primary about" id="about-close">Close</a>
     <p>Search Digital New Zealand for a term or terms and view the metadata associated with your search.
-        The metadata is shown as force directed text cloud.</p>
-    <p>Double click either chart type
-        to zoom in further. Use your scroll wheel to pan back out. Drag the visualization to move around in it. Hover over a text bubble to view info about it. Click a text
-        bubble to search Digital New Zealand for your original term plus the clicked metadata field.</p>
+        The metadata is shown as a bar chart, scatter plot and treemap.</p>
+    <p>Click the treemap to expand a section. Once expanded you can click a term's box to search for it. Click
+        outside the treemap to close the section.</p>
     <p>The available metadata fields are: category, creator, language, provider, rights, subject and year. Metadata fields are based on
         which fields are facetable from the provider to reduce querying time.</p>
 </div>
