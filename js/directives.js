@@ -193,7 +193,7 @@ angular.module('metadataViewerApp').directive('boxPlot', ['tipService', 'StatsSe
                 .attr("r", function(d) { return circle_size(d.count); })
                 .attr("transform", "translate("+ margin.left + "," + (margin.top + 25) + ")")
                 .on("mouseover", function(d) {
-                    var plural = StatsService.textFormat(d.value);
+                    var plural = StatsService.textFormat(d.count);
                     var text = d.count + ' record' + plural + ' returned <br/>' +
                         StatsService.numFormat(d.value) + ' item'  + plural + ' for <br/>' + d.type;
                     tipService.tipShow(tip, text);
