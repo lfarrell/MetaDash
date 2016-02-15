@@ -120,3 +120,11 @@ circle {
 .fobj {
     overflow: hidden;
 }
+
+a {
+    color: coral;
+}
+
+a:hover {
+    color: chocolate;
+}
